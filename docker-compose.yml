@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  streamlit-dashboard:
+    build: .
+    container_name: stock-streamlit-dashboard
+    command: streamlit run app.py
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=utf-8
+    restart: unless-stopped
+
+  fastapi-backend:
+    build: .
+    container_name: stock-fastapi-backend
+    command: uvicorn server:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=utf-8
+    restart: unless-stopped
