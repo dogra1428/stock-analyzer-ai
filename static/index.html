@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApexTrade AI — Advanced Predictions & Sentiment</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/static/style.css">
+    
+    <!-- CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Live Ticker Tape Marquee -->
+    <div class="ticker-tape">
+        <div class="ticker-wrapper" id="tickerTapeWrapper">
+            <span class="ticker-item placeholder-item">Loading live market indices...</span>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation & Controls -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="trending-up" class="logo-icon"></i>
+                    <span>ApexTrade <span class="badge-pro">AI</span></span>
+                </div>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Search Section -->
+                <div class="search-section card">
+                    <h3><i data-lucide="search"></i> Analyze Ticker</h3>
+                    <form id="searchForm" class="search-form">
+                        <div class="input-wrapper">
+                            <input type="text" id="tickerInput" placeholder="e.g. AAPL, BTC-USD, RELIANCE.NS" required autocomplete="off">
+                        </div>
+                        <button type="submit" id="analyzeBtn" class="primary-btn">
+                            <span>Analyze</span>
+                            <i data-lucide="arrow-right"></i>
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Parameters Section -->
+                <div class="parameters-section card">
+                    <h3><i data-lucide="sliders"></i> Range & Options</h3>
+                    <div class="parameter-group">
+                        <label for="daysRange">Daily Range: <span id="daysVal">365</span> days</label>
+                        <input type="range" id="daysRange" min="30" max="730" value="365" step="30">
+                    </div>
+                </div>
+                
+                <!-- Suggestions Section -->
+                <div class="suggestions-card card">
+                    <h3><i data-lucide="compass"></i> Global Tickers</h3>
+                    <div class="suggestion-tabs">
+                        <span class="s-tab active" onclick="switchSuggestions(event, 'us')">US</span>
+                        <span class="s-tab" onclick="switchSuggestions(event, 'in')">IN</span>
+                        <span class="s-tab" onclick="switchSuggestions(event, 'crypto')">Crypto</span>
+                        <span class="s-tab" onclick="switchSuggestions(event, 'forex')">Forex</span>
+                        <span class="s-tab" onclick="switchSuggestions(event, 'commodities')">Commodities</span>
+                    </div>
+                    <div class="suggestion-list" id="suggestionList">
+                        <!-- suggestions populated by js -->
+                    </div>
+                </div>
+
+                <!-- Fast Links / Sidebar Portfolio Overview -->
+                <div class="portfolio-section card">
+                    <h3><i data-lucide="briefcase"></i> My Watchlist</h3>
+                    <div class="portfolio-list" id="portfolioList">
+                        <!-- Portfolios will be added dynamically -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- Floating Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <div class="title-row">
+                        <h1 id="companyName">Enter a stock ticker</h1>
+                        <div class="ticker-badge" id="tickerBadge" style="display: none;">AAPL</div>
+                    </div>
+                </div>
+                
+                <!-- Timeframe View Toggle -->
+                <div class="timeframe-toggle-bar" id="timeframeToggleBar" style="display: none;">
+                    <button class="timeframe-btn active" id="tfLongBtn" onclick="toggleTimeframe('long')">
+                        <i data-lucide="calendar"></i> Investor (Daily / 30D Forecast)
+                    </button>
+                    <button class="timeframe-btn" id="tfShortBtn" onclick="toggleTimeframe('short')">
+                        <i data-lucide="clock"></i> Trader (15M / 5D Intraday)
+                    </button>
+                </div>
+
+                <div class="header-right">
+                    <div id="userProfileArea" class="user-profile-area">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                    <div class="api-status-badges">
+                        <span class="api-badge success"><i data-lucide="globe"></i> Real-time</span>
+                        <span class="api-badge" id="openaiStatus"><i data-lucide="key"></i> OpenAI</span>
+                    </div>
+                    <button id="settingsBtn" class="theme-toggle-btn" title="OpenAI API Settings" style="margin-right: 8px;">
+                        <i data-lucide="settings"></i>
+                    </button>
+                    <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Light/Dark Theme">
+                        <i data-lucide="sun" id="themeIcon"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Dashboard View Switcher Navigation Tabs -->
+            <nav class="view-navigation" id="viewNav">
+                <button class="nav-tab-btn active" onclick="switchView('dashboard')">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </button>
+                <button class="nav-tab-btn" onclick="switchView('explorer')">
+                    <i data-lucide="compass"></i> Market Explorer
+                </button>
+                <button class="nav-tab-btn" onclick="switchView('backtester')">
+                    <i data-lucide="flask-conical"></i> Backtester
+                </button>
+                <button class="nav-tab-btn" onclick="switchView('portfolio')">
+                    <i data-lucide="briefcase"></i> Portfolio & P&L
+                </button>
+                <button class="nav-tab-btn" onclick="switchView('alerts')">
+                    <i data-lucide="bell"></i> Alert Center <span class="badge-count" id="activeAlertsCount" style="display:none;">0</span>
+                </button>
+            </nav>
+            
+            <!-- Dashboard View Container -->
+            <div class="tab-view-container" id="dashboardView" style="display: none;">
+                <!-- Dashboard Sub-Navigation Tabs -->
+                <div class="dashboard-subnav" id="dashboardSubNav">
+                    <button class="subnav-btn active" id="btnSlideCharts" onclick="switchDashboardSlide('charts')">
+                        <i data-lucide="line-chart"></i> Charts & Indicators
+                    </button>
+                    <button class="subnav-btn" id="btnSlideAI" onclick="switchDashboardSlide('ai')">
+                        <i data-lucide="brain-circuit"></i> AI Forecast & Valuation
+                    </button>
+                    <button class="subnav-btn" id="btnSlideStats" onclick="switchDashboardSlide('stats')">
+                        <i data-lucide="table"></i> Stats & Peer Matrix
+                    </button>
+                </div>
+                
+                <div class="dashboard-grid">
+                    
+                    <!-- Slide 1: Charts & Indicators -->
+                    <div id="slideCharts" class="dashboard-slide">
+                        <!-- Charting Section (Line/Candlestick & Indicator Subplots) -->
+                        <section class="chart-section card">
+                            <div class="card-header border-bottom">
+                                <div class="chart-header-left">
+                                    <h2><i data-lucide="line-chart"></i> Price & Forecast Analytics</h2>
+                                    <!-- Chart Type Toggle -->
+                                    <div class="chart-type-toggle">
+                                        <button class="type-btn active" id="chartAreaBtn" onclick="toggleChartType('area')">Area</button>
+                                        <button class="type-btn" id="chartCandleBtn" onclick="toggleChartType('candlestick')">Candles</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Overlay Controls -->
+                                <div class="chart-controls">
+                                    <span class="control-title">Overlays:</span>
+                                    <label class="control-label">
+                                        <input type="checkbox" id="checkBB"> Bollinger Bands
+                                    </label>
+                                    <label class="control-label">
+                                        <input type="checkbox" id="checkSMA50"> SMA 50
+                                    </label>
+                                    <label class="control-label">
+                                        <input type="checkbox" id="checkSMA200"> SMA 200
+                                    </label>
+                                </div>
+                                
+                                <div class="chart-actions">
+                                    <span class="chart-legend"><span class="legend-color blue"></span> Close Price</span>
+                                    <span class="chart-legend" id="forecastLegend"><span class="legend-color green dash"></span> AI Forecast</span>
+                                    <span class="chart-legend" id="confidenceLegend"><span class="legend-color band"></span> Range</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Price Chart -->
+                            <div class="chart-container">
+                                <div id="priceForecastChart"></div>
+                            </div>
+                            
+                            <!-- RSI Subplot -->
+                            <div class="subplot-divider">
+                                <span>Relative Strength Index (RSI)</span>
+                            </div>
+                            <div class="subplot-container">
+                                <div id="rsiSubplotChart"></div>
+                            </div>
+                            
+                            <!-- MACD Subplot -->
+                            <div class="subplot-divider">
+                                <span>Moving Average Convergence Divergence (MACD)</span>
+                            </div>
+                            <div class="subplot-container">
+                                <div id="macdSubplotChart"></div>
+                            </div>
+                        </section>
+                        
+                        <!-- Signals and allocations row -->
+                        <div class="row double-column" style="margin-top: 24px;">
+                            <!-- Technical Signals -->
+                            <div class="signals-card card">
+                                <div class="card-header">
+                                    <h2><i data-lucide="waves"></i> Technical Indicators Sweep</h2>
+                                </div>
+                                <table class="signals-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Indicator</th>
+                                            <th>Value</th>
+                                            <th>Market Signal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Relative Strength Index (RSI)</td>
+                                            <td class="font-mono" id="rsiVal">N/A</td>
+                                            <td><span class="signal-badge" id="rsiSignal">Neutral</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>MACD Convergence</td>
+                                            <td class="font-mono" id="macdVal">N/A</td>
+                                            <td><span class="signal-badge" id="macdSignal">Neutral</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Bollinger Bands Position</td>
+                                            <td class="font-mono">—</td>
+                                            <td><span class="signal-badge" id="bbSignal">Neutral</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Momentum Index (ROC)</td>
+                                            <td class="font-mono" id="momentumVal">N/A</td>
+                                            <td><span class="signal-badge" id="momentumSignal">—</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Watchlist Allocations / Details -->
+                            <div class="allocation-card card">
+                                <div class="card-header">
+                                    <h2><i data-lucide="package-plus"></i> Holdings & Watchlist</h2>
+                                </div>
+                                <div class="holding-editor-box">
+                                    <div class="holding-input-group">
+                                        <label for="sharesInput">Shares Owned:</label>
+                                        <input type="number" id="sharesInput" min="0" value="0">
+                                    </div>
+                                    <button id="updateHoldingBtn" class="primary-btn sm">
+                                        <i data-lucide="save"></i> Update Position
+                                    </button>
+                                </div>
+                                <div class="portfolio-holding-details">
+                                    <div class="detail-row">
+                                        <span>Holding Value:</span>
+                                        <span class="val font-mono" id="holdingValue">$0.00</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span>Portfolio Weight:</span>
+                                        <span class="val font-mono" id="holdingWeight">0.00%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Slide 2: AI Forecast & Valuation -->
+                    <div id="slideAI" class="dashboard-slide" style="display: none;">
+                        <!-- Top Analytical Row -->
+                        <div class="row double-column">
+                            <!-- AI Forecast Widget -->
+                            <div class="prediction-card card">
+                                <div class="card-header">
+                                    <h2><i data-lucide="shield-alert"></i> Machine Learning Forecast</h2>
+                                    <span class="badge" id="directionBadge">➡️ NEUTRAL</span>
+                                </div>
+                                <div class="prediction-display">
+                                    <div class="radial-gauge-container">
+                                        <div id="confidenceGauge"></div>
+                                    </div>
+                                    <div class="prediction-details">
+                                        <div class="detail-item">
+                                            <span class="label">Forecast Trend</span>
+                                            <span class="value font-mono" id="forecastDir">Neutral</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="label" id="forecastRangeLabel">Expected Change (30d)</span>
+                                            <span class="value font-mono" id="expectedChange">0.00%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Market Sentiment Widget -->
+                            <div class="sentiment-card card">
+                                <div class="card-header">
+                                    <h2><i data-lucide="brain-circuit"></i> Market Sentiment</h2>
+                                    <span class="badge" id="sentimentBadge">Neutral</span>
+                                </div>
+                                <div class="sentiment-display">
+                                    <div class="score-box">
+                                        <span class="score-value font-mono" id="sentimentScore">0.50</span>
+                                        <span class="score-label">Sentiment Index</span>
+                                    </div>
+                                    <div class="sentiment-details">
+                                        <div class="bar-chart-row">
+                                            <span>Bullish signals:</span>
+                                            <span class="val font-mono" id="bullishCount">0</span>
+                                        </div>
+                                        <div class="bar-chart-row">
+                                            <span>Bearish signals:</span>
+                                            <span class="val font-mono" id="bearishCount">0</span>
+                                        </div>
+                                        <p class="sentiment-note">Real-time Yahoo Finance RSS headlines analysed.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- DCF Valuation Calculator -->
+                        <div class="row double-column" style="margin-top: 24px;">
+                            <!-- Interactive DCF Calculator -->
+                            <div class="dcf-card card">
+                                <div class="card-header">
+                                    <h2><i data-lucide="calculator"></i> DCF Intrinsic Valuation</h2>
+                                    <span class="badge" id="dcfBadge">Calculating...</span>
+                                </div>
+                                <div class="dcf-grid">
+                                    <div class="dcf-inputs">
+                                        <div class="slider-group">
+                                            <label>Proj. Growth Rate: <span class="val font-mono" id="dcfGrowthVal">8</span>%</label>
+                                            <input type="range" id="dcfGrowth" min="1" max="30" value="8">
+                                        </div>
+                                        <div class="slider-group">
+                                            <label>Discount Rate (WACC): <span class="val font-mono" id="dcfWaccVal">10</span>%</label>
+                                            <input type="range" id="dcfWacc" min="5" max="20" value="10">
+                                        </div>
+                                        <div class="slider-group">
+                                            <label>Terminal Growth: <span class="val font-mono" id="dcfTerminalVal">2.5</span>%</label>
+                                            <input type="range" id="dcfTerminal" min="1" max="5" value="2.5" step="0.5">
+                                        </div>
+                                    </div>
+                                    <div class="dcf-output">
+                                        <div class="output-block">
+                                            <span class="lbl font-mono">INTRINSIC VALUE</span>
+                                            <span class="val font-mono" id="dcfValue">$0.00</span>
+                                        </div>
+                                        <div class="output-block">
+                                            <span class="lbl font-mono">MARGIN OF SAFETY</span>
+                                            <span class="val font-mono" id="dcfMargin">0.00%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Static Info / Explanation Card to balance layout -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h2><i data-lucide="info"></i> AI & Valuation Overview</h2>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 14px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.6;">
+                                    <p>Our <strong>Machine Learning Forecast</strong> uses a lag-based Random Forest regressor combined with ARIMA auto-regression on the historical daily closes to generate recursive 30-day projections.</p>
+                                    <p>The <strong>Discounted Cash Flow (DCF)</strong> calculator evaluates the present value of future cash flows using projected growth rates. Note: commodity and forex assets utilize baseline fallback calculations as they lack traditional corporate EPS reports.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Slide 3: Fundamentals, Peers & Data -->
+                    <div id="slideStats" class="dashboard-slide" style="display: none;">
+                        <!-- Key Stats Row -->
+                        <section class="stats-row">
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper blue"><i data-lucide="banknote"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">Current Price</span>
+                                    <span class="stat-value font-mono" id="currentPrice">$0.00</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper" id="dayChangeIconBox"><i data-lucide="percent"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">Day Change</span>
+                                    <span class="stat-value font-mono" id="dayChange">$0.00 (0.00%)</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper green"><i data-lucide="trending-up"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">52-Week High</span>
+                                    <span class="stat-value font-mono" id="high52Week">$0.00</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper red"><i data-lucide="trending-down"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">52-Week Low</span>
+                                    <span class="stat-value font-mono" id="low52Week">$0.00</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper purple"><i data-lucide="landmark"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">Market Cap</span>
+                                    <span class="stat-value font-mono" id="marketCap">$0.00</span>
+                                </div>
+                            </div>
+                        </section>
+                        
+                        <!-- Investment Profile Scorecard & Peer Matrix -->
+                        <div class="row double-column" style="margin-top: 24px;">
+                            <!-- Scorecard Card -->
+                            <div style="display: flex; flex-direction: column; gap: 20px;">
+                                <!-- Trader Score -->
+                                <div class="profile-card card">
+                                    <div class="card-header">
+                                        <h2><i data-lucide="gauge"></i> Trading Suitability Profile</h2>
+                                        <span class="score-text" id="traderScoreVal">0%</span>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill blue" id="traderScoreBar" style="width: 0%;"></div>
+                                    </div>
+                                    <p class="profile-desc">Short-term score based on RSI, MACD crossovers, and pricing momentum.</p>
+                                </div>
+        
+                                <!-- Investor Score -->
+                                <div class="profile-card card">
+                                    <div class="card-header">
+                                        <h2><i data-lucide="wallet-cards"></i> Investing Health Profile</h2>
+                                        <span class="score-text" id="investorScoreVal">0%</span>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill green" id="investorScoreBar" style="width: 0%;"></div>
+                                    </div>
+                                    <p class="profile-desc">Long-term score based on valuation metrics (P/E), dividend yield, and 52-week position.</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Sector Peer Matrix -->
+                            <div class="peers-card card">
+                                <div class="card-header">
+                                    <h2><i data-lucide="users"></i> Sector Peer Matrix</h2>
+                                </div>
+                                <table class="peers-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ticker</th>
+                                            <th>Price</th>
+                                            <th>P/E</th>
+                                            <th>Market Cap</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="peersTableBody">
+                                        <!-- populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Historical Data Table -->
+                        <section class="table-section card" style="margin-top: 24px;">
+                            <div class="card-header">
+                                <h2><i data-lucide="table"></i> Recent Historical Data Table</h2>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Open</th>
+                                            <th>High</th>
+                                            <th>Low</th>
+                                            <th>Close</th>
+                                            <th>Volume</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="historicalTableBody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                    
+                </div>
+            </div>
+
+            <!-- Backtester View Container -->
+            <div class="tab-view-container" id="backtesterView" style="display: none;">
+                <div class="backtester-grid">
+                    <!-- Backtest Setup Card -->
+                    <div class="backtest-setup card">
+                        <h2><i data-lucide="flask-conical"></i> Strategy Backtester</h2>
+                        <div class="backtest-controls-row">
+                            <div class="control-group">
+                                <label for="backtestStrategy">Select Strategy:</label>
+                                <select id="backtestStrategy">
+                                    <option value="rsi">RSI Mean Reversion (Buy <30, Sell >70)</option>
+                                    <option value="sma">SMA Crossover (50 SMA / 200 SMA)</option>
+                                </select>
+                            </div>
+                            <button class="primary-btn" onclick="runStrategyBacktest()">Run Backtest</button>
+                        </div>
+                    </div>
+
+                    <!-- Backtest Results Stats -->
+                    <div class="backtest-results-stats" id="backtestStats" style="display:none;">
+                        <div class="stats-row">
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper blue"><i data-lucide="trending-up"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">Strategy Return</span>
+                                    <span class="stat-value font-mono" id="btStrategyReturn">0.00%</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper purple"><i data-lucide="award"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">Buy & Hold Return</span>
+                                    <span class="stat-value font-mono" id="btHoldReturn">0.00%</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper" id="btWinRateIcon"><i data-lucide="percent"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">Win Rate</span>
+                                    <span class="stat-value font-mono" id="btWinRate">0.00%</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card">
+                                <div class="stat-icon-wrapper red"><i data-lucide="trending-down"></i></div>
+                                <div class="stat-content">
+                                    <span class="stat-label">Max Drawdown</span>
+                                    <span class="stat-value font-mono" id="btMaxDrawdown">0.00%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trade Logs Table -->
+                        <div class="backtest-trades-log card">
+                            <div class="card-header">
+                                <h3><i data-lucide="list"></i> Executed Trades History</h3>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Date</th>
+                                            <th>Price</th>
+                                            <th>Shares</th>
+                                            <th>Value</th>
+                                            <th>P&L</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="backtestTradesTableBody">
+                                        <!-- populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portfolio Manager View Container -->
+            <div class="tab-view-container" id="portfolioView" style="display: none;">
+                <div class="portfolio-grid">
+                    
+                    <!-- Portfolio Stats Row -->
+                    <div class="stats-row">
+                        <div class="stat-card card">
+                            <div class="stat-icon-wrapper blue"><i data-lucide="dollar-sign"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Portfolio Cost</span>
+                                <span class="stat-value font-mono" id="portCostValue">$0.00</span>
+                            </div>
+                        </div>
+                        <div class="stat-card card">
+                            <div class="stat-icon-wrapper purple"><i data-lucide="wallet"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Market Value</span>
+                                <span class="stat-value font-mono" id="portMarketValue">$0.00</span>
+                            </div>
+                        </div>
+                        <div class="stat-card card">
+                            <div class="stat-icon-wrapper" id="portPlIcon"><i data-lucide="percent"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Return (P&L)</span>
+                                <span class="stat-value font-mono" id="portPlValue">$0.00 (0.00%)</span>
+                            </div>
+                        </div>
+                        <div class="stat-card card">
+                            <div class="stat-icon-wrapper green"><i data-lucide="calendar-check"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-label">Annualized Return (CAGR)</span>
+                                <span class="stat-value font-mono" id="portCagrValue">0.00%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row double-column">
+                        <!-- Transaction Logger Form -->
+                        <div class="transaction-logger-card card">
+                            <div class="card-header">
+                                <h2><i data-lucide="plus-circle"></i> Log New Transaction</h2>
+                            </div>
+                            <form id="transactionForm" class="search-form">
+                                <div class="control-group-row">
+                                    <div class="holding-input-group">
+                                        <label for="txTicker">Ticker:</label>
+                                        <input type="text" id="txTicker" required placeholder="e.g. AAPL" uppercase>
+                                    </div>
+                                    <div class="holding-input-group">
+                                        <label for="txType">Type:</label>
+                                        <select id="txType">
+                                            <option value="BUY">BUY</option>
+                                            <option value="SELL">SELL</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="control-group-row">
+                                    <div class="holding-input-group">
+                                        <label for="txPrice">Price per Share:</label>
+                                        <input type="number" id="txPrice" required step="0.01" min="0.01">
+                                    </div>
+                                    <div class="holding-input-group">
+                                        <label for="txShares">Shares Quantity:</label>
+                                        <input type="number" id="txShares" required step="0.001" min="0.001">
+                                    </div>
+                                </div>
+                                <div class="holding-input-group">
+                                    <label for="txDate">Transaction Date:</label>
+                                    <input type="date" id="txDate" required>
+                                </div>
+                                <button type="submit" class="primary-btn">Log Transaction</button>
+                            </form>
+                        </div>
+
+                        <!-- Asset allocation charts / holdings summary -->
+                        <div class="allocation-summary-card card">
+                            <div class="card-header">
+                                <h2><i data-lucide="pie-chart"></i> Asset Allocation</h2>
+                            </div>
+                            <div id="portfolioDetailsAllocationChart"></div>
+                        </div>
+                    </div>
+
+                    <!-- Transaction Ledger Table -->
+                    <div class="transaction-ledger card">
+                        <div class="card-header">
+                            <h2><i data-lucide="list"></i> Transaction History Logs</h2>
+                            <button class="primary-btn sm danger" onclick="clearAllTransactions()">Clear All</button>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Ticker</th>
+                                        <th>Type</th>
+                                        <th>Shares</th>
+                                        <th>Price</th>
+                                        <th>Total Value</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ledgerTableBody">
+                                    <!-- populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alert Center View Container -->
+            <div class="tab-view-container" id="alertsView" style="display: none;">
+                <div class="alerts-grid">
+                    
+                    <!-- Alert Creator Form -->
+                    <div class="row double-column">
+                        <div class="alert-creator card">
+                            <div class="card-header">
+                                <h2><i data-lucide="bell-plus"></i> Create New Live Alert</h2>
+                            </div>
+                            <form id="alertForm" class="search-form">
+                                <div class="holding-input-group">
+                                    <label for="alertTicker">Stock Ticker:</label>
+                                    <input type="text" id="alertTicker" required placeholder="e.g. AAPL">
+                                </div>
+                                <div class="control-group-row">
+                                    <div class="holding-input-group">
+                                        <label for="alertMetric">Metric:</label>
+                                        <select id="alertMetric" onchange="updateAlertFormOptions()">
+                                            <option value="price">Price (USD)</option>
+                                            <option value="rsi">RSI Value</option>
+                                        </select>
+                                    </div>
+                                    <div class="holding-input-group">
+                                        <label for="alertCondition">Condition:</label>
+                                        <select id="alertCondition">
+                                            <option value="above">Crosses Above</option>
+                                            <option value="below">Crosses Below</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="holding-input-group">
+                                    <label for="alertValue">Target Value:</label>
+                                    <input type="number" id="alertValue" required step="0.01">
+                                </div>
+                                <button type="submit" class="primary-btn">Enable Alert</button>
+                            </form>
+                        </div>
+
+                        <!-- Active Alerts Listing -->
+                        <div class="active-alerts card">
+                            <div class="card-header">
+                                <h2><i data-lucide="shield-check"></i> Enabled Alerts</h2>
+                            </div>
+                            <div class="alerts-list" id="activeAlertsList">
+                                <!-- active alerts populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Triggered Alerts Log -->
+                    <div class="triggered-alerts card">
+                        <div class="card-header">
+                            <h2><i data-lucide="history"></i> Triggered Alerts Log</h2>
+                            <button class="primary-btn sm" onclick="clearTriggeredAlertsLog()">Clear Log</button>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Ticker</th>
+                                        <th>Alert Condition</th>
+                                        <th>Triggered Value</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="triggeredAlertsTableBody">
+                                    <!-- populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Market Explorer View Container -->
+            <div class="tab-view-container" id="explorerView" style="display: none;">
+                <div class="explorer-header card">
+                    <h2><i data-lucide="compass"></i> Global Market Explorer</h2>
+                    <p>Browse and search popular assets across global markets to generate AI predictions and valuations.</p>
+                    
+                    <!-- Search within Explorer -->
+                    <div class="explorer-search-wrapper">
+                        <i data-lucide="search" class="explorer-search-icon"></i>
+                        <input type="text" id="explorerSearchInput" placeholder="Search by company name or ticker..." autocomplete="off">
+                    </div>
+                </div>
+                
+                <!-- Explorer Category Tabs -->
+                <div class="explorer-category-bar">
+                    <button class="explorer-cat-btn active" onclick="filterExplorerCategory('all')">All Assets</button>
+                    <button class="explorer-cat-btn" onclick="filterExplorerCategory('us')">🇺🇸 US Stocks</button>
+                    <button class="explorer-cat-btn" onclick="filterExplorerCategory('in')">🇮🇳 Indian Stocks</button>
+                    <button class="explorer-cat-btn" onclick="filterExplorerCategory('crypto')">🪙 Cryptocurrencies</button>
+                    <button class="explorer-cat-btn" onclick="filterExplorerCategory('forex')">💱 Forex / Currencies</button>
+                    <button class="explorer-cat-btn" onclick="filterExplorerCategory('commodities')">📦 Commodities</button>
+                </div>
+                
+                <!-- Explorer Grid -->
+                <div class="explorer-grid" id="explorerGrid">
+                    <!-- Dynamic asset cards populated by JS -->
+                </div>
+            </div>
+            
+            <!-- Initial Empty State -->
+            <div class="empty-state" id="emptyState">
+                <i data-lucide="line-chart" class="empty-icon animate-pulse"></i>
+                <h2>Universal ApexTrade AI Analyzer</h2>
+                <p class="empty-subtitle">Search any global stock, crypto, forex, or commodity ticker to generate AI predictions and sentiment analysis.</p>
+                
+                <!-- Centerpiece Search Box -->
+                <form id="centerSearchForm" class="center-search-form">
+                    <div class="center-input-wrapper">
+                        <i data-lucide="search" class="search-field-icon"></i>
+                        <input type="text" id="centerTickerInput" placeholder="Enter ticker symbol (e.g. AAPL, BTC-USD, RELIANCE.NS)" required autocomplete="off">
+                    </div>
+                    <button type="submit" class="primary-btn center-search-btn">
+                        <span>Analyze Ticker</span>
+                        <i data-lucide="arrow-right"></i>
+                    </button>
+                </form>
+                
+                <!-- Quick Tickers Section -->
+                <div class="quick-tickers-section">
+                    <span class="quick-title">Quick Start Suggestions:</span>
+                    <div class="quick-ticker-grid">
+                        <button class="quick-card card" onclick="loadTickerDirect('AAPL')">
+                            <span class="ticker font-mono">AAPL</span>
+                            <span class="desc">Apple Inc.</span>
+                        </button>
+                        <button class="quick-card card" onclick="loadTickerDirect('TMCV.NS')">
+                            <span class="ticker font-mono">TMCV.NS</span>
+                            <span class="desc">Tata Motors</span>
+                        </button>
+                        <button class="quick-card card" onclick="loadTickerDirect('BTC-USD')">
+                            <span class="ticker font-mono">BTC-USD</span>
+                            <span class="desc">Bitcoin</span>
+                        </button>
+                        <button class="quick-card card" onclick="loadTickerDirect('GC=F')">
+                            <span class="ticker font-mono">GC=F</span>
+                            <span class="desc">Gold Futures</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal-backdrop" id="settingsModal" style="display: none;">
+        <div class="modal card">
+            <div class="modal-header">
+                <h2><i data-lucide="settings"></i> OpenAI Key Configuration</h2>
+                <button class="close-modal-btn" id="closeSettingsBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13.5px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+                    Enter your OpenAI API key to enable AI-powered sentiment analysis. Your key is stored locally in your browser.
+                </p>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="openaiKeyInput" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 13px;">OpenAI API Key</label>
+                    <input type="password" id="openaiKeyInput" placeholder="sk-proj-..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-primary); font-family: monospace; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button class="primary-btn sm danger" id="clearKeyBtn" style="font-size: 12px; padding: 6px 12px;">Clear Key</button>
+                    <button class="primary-btn sm" id="saveKeyBtn" style="font-size: 12px; padding: 6px 12px;">Save Key</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authentication Modal -->
+    <div class="modal-backdrop" id="authModal" style="display: none;">
+        <div class="modal card auth-modal-card">
+            <div class="modal-header">
+                <h2 id="authModalTitle"><i data-lucide="user"></i> Sign In to ApexTrade</h2>
+                <button class="close-modal-btn" id="closeAuthBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Auth Tabs Toggle -->
+                <div class="auth-tabs">
+                    <button class="auth-tab-btn active" id="tabLoginBtn" onclick="switchAuthTab('login')">Login</button>
+                    <button class="auth-tab-btn" id="tabRegisterBtn" onclick="switchAuthTab('register')">Register</button>
+                </div>
+                
+                <form id="authForm" style="margin-top: 16px;">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="authUsernameInput" style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 13px;">Username</label>
+                        <input type="text" id="authUsernameInput" placeholder="Enter username" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); font-size: 13.5px; box-sizing: border-box; outline: none;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="authPasswordInput" style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 13px;">Password</label>
+                        <input type="password" id="authPasswordInput" placeholder="Enter password" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); font-size: 13.5px; box-sizing: border-box; outline: none;">
+                    </div>
+                    <button type="submit" class="primary-btn" id="authSubmitBtn">
+                        <span>Sign In</span>
+                        <i data-lucide="log-in"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
