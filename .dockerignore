@@ -1,0 +1,12 @@
+.venv
+venv
+__pycache__
+*.pyc
+.git
+.gitignore
+.env
+.idea
+.vscode
+*.log
+*.db
+C:\Users\MAYANK DOGRA\.gemini\antigravity
